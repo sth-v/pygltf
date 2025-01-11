@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-import io
-from dataclasses import dataclass, field, asdict
-from functools import lru_cache
-from typing import Any, Dict, List, Optional
 import json
-
-
-from pathlib import Path
-from io import FileIO,BytesIO
-from typing import BinaryIO,IO
-from dataclasses_json import dataclass_json,Undefined
 import struct
+from collections import namedtuple
+from functools import lru_cache
+from io import FileIO, BytesIO
+from pathlib import Path
+from typing import Any,Dict, List, Optional,BinaryIO,Generator, NamedTuple
+
+from dataclasses import dataclass,field, asdict
+from dataclasses_json import dataclass_json, Undefined
+
 import numpy as np
-COMPONENTS= [
+from numpy.typing import NDArray
+
+
+
+
+COMPONENTS = [
     {
         "const": 5120,
         "name": "BYTE",
@@ -29,7 +33,7 @@ COMPONENTS= [
         "fmt": "B",
         "size": struct.calcsize("B"),
         "three": "UInt8",
-        "numpy":  np.dtype('uint8'),
+        "numpy": np.dtype('uint8'),
         "py": int,
 
     }, {
@@ -37,7 +41,7 @@ COMPONENTS= [
         "name": "SHORT",
         "three": "Int16",
         "fmt": "h",
-        "size":struct.calcsize("h"),
+        "size": struct.calcsize("h"),
         "numpy": np.dtype('int16'),
         "py": int
     }, {
@@ -83,20 +87,15 @@ COMPONENT_DTYPES = {
     5126: np.dtype('float32')
 }
 
-NUM_COMPONENTS={
-    "SCALAR":1,
-    "VEC2":2,
-    "VEC3":3,
-    "VEC4":4,
-    "MAT2":4,
-    "MAT3":9,
-    "MAT4":16
+NUM_COMPONENTS = {
+    "SCALAR": 1,
+    "VEC2": 2,
+    "VEC3": 3,
+    "VEC4": 4,
+    "MAT2": 4,
+    "MAT3": 9,
+    "MAT4": 16
 }
-
-
-import numpy as np
-from gltf.definitions import GLTF, Accessor
-from gltf.geometry import MeshGeometry
 
 # Maps componentType -> np.dtype plus number of bytes
 # This is a minimal mapping for demonstration.
@@ -128,39 +127,31 @@ GLTFId = int
 
 
 
-from dataclasses import dataclass
-from typing import Any
-
-from numpy.typing import NDArray
-import numpy as np
-
 @dataclass
 class PointsGeometry:
     vertices: NDArray[float]
     colors: NDArray[float] | None = None
-    extras:dict[str,Any]|None=None
+    extras: dict[str, Any] | None = None
+
 
 @dataclass
 class LineGeometry:
     vertices: NDArray[float]
     colors: NDArray[float] | None = None
-    extras:dict[str,Any]|None=None
+    extras: dict[str, Any] | None = None
+
 
 @dataclass
 class MeshGeometry:
-    vertices:NDArray[float]
-    colors:NDArray[float] | None=None
+    vertices: NDArray[float]
+    colors: NDArray[float] | None = None
     normals: NDArray[float] | None = None
-    uv:NDArray[float] | None=None
-    faces:NDArray[int] | None=None
-    extras:dict[str,Any]|None=None
+    uv: NDArray[float] | None = None
+    faces: NDArray[int] | None = None
+    extras: dict[str, Any] | None = None
 
     def to_tris(self):
-        return self.vertices[self.faces.reshape((len(self.faces)//3,3))]
-
-
-
-
+        return self.vertices[self.faces.reshape((len(self.faces) // 3, 3))]
 
 
 @dataclass_json(undefined=Undefined.EXCLUDE)
@@ -1166,48 +1157,41 @@ class GLTF(GLTFProperty):
 
 
 
-
-
-import json
-import struct
-from collections import namedtuple
-from typing import Generator,NamedTuple
-
-import numpy as np
-
 class BinaryGltfChunkType(NamedTuple):
-    chunk_type:int
-    ascii:str
-    description:str
+    chunk_type: int
+    ascii: str
+    description: str
 
+    def tobytes(self) -> bytes:
+        return struct.pack('I', self.chunk_type)
 
-
-    def tobytes(self)->bytes:
-        return struct.pack('I',self.chunk_type)
     def __int__(self):
         return self.chunk_type
 
     def __str__(self):
         return self.ascii
+
     def __bytes__(self):
         return self.tobytes()
+
     def __repr__(self):
         return f'GLTF ChunkType ({self.chunk_type}, "{self.ascii}", "{self.description})"'
 
-gltf_chunk_types={
-    1313821514:BinaryGltfChunkType(
+
+gltf_chunk_types = {
+    1313821514: BinaryGltfChunkType(
         1313821514,
         'JSON',
         "Structured JSON content"
     ),
-    5130562:BinaryGltfChunkType(
+    5130562: BinaryGltfChunkType(
         5130562,
         'BIN',
         "Binary buffer"
     )
 }
-JSON=gltf_chunk_types[1313821514]
-BIN=gltf_chunk_types[5130562]
+JSON = gltf_chunk_types[1313821514]
+BIN = gltf_chunk_types[5130562]
 uint32 = np.dtype('uint32')
 header_t = np.dtype('3uint32')
 chunk_info_t = np.dtype('2uint32')
@@ -1230,7 +1214,7 @@ def unpack_header_chunk(bts: bytes) -> UnpackChunkResult:
 def unpack_json_chunk(bts: bytes) -> UnpackChunkResult:
     chunk_info = np.frombuffer(bts[: chunk_info_t.itemsize], uint32)
     chunk_type = int(chunk_info[1])
-    chunk_type_obj=gltf_chunk_types.get(chunk_type, chunk_type)
+    chunk_type_obj = gltf_chunk_types.get(chunk_type, chunk_type)
     if chunk_type_obj is not JSON:
         raise ValueError(f'JSON (1313821514) chunk type is expected, but {chunk_type} exists:')
     return UnpackChunkResult(
@@ -1244,12 +1228,12 @@ def unpack_json_chunk(bts: bytes) -> UnpackChunkResult:
 
 def unpack_binary_chunk(bts: bytes) -> UnpackChunkResult:
     chunk_info = np.frombuffer(bts[: chunk_info_t.itemsize], uint32)
-    chunk_type=int(chunk_info[1])
+    chunk_type = int(chunk_info[1])
 
     return UnpackChunkResult(
         BinaryGltfChunk(
             chunk_info[0],
-            gltf_chunk_types.get(chunk_type,chunk_type),
+            gltf_chunk_types.get(chunk_type, chunk_type),
             bts[chunk_info_t.itemsize:][: int(chunk_info[0])]
         ),
         chunk_info[0] + chunk_info_t.itemsize
@@ -1271,8 +1255,6 @@ def unpack_all(bts: bytes) -> Generator[BinaryGltfHeaderChunk | BinaryGltfJsonCh
         yield binary_result.chunk
 
 
-
-
 def parse_json_chunk_to_gltf(json_dict: dict) -> GLTF:
     """
     Convert the top-level JSON dictionary into a GLTF dataclass tree.
@@ -1281,7 +1263,7 @@ def parse_json_chunk_to_gltf(json_dict: dict) -> GLTF:
 
 
 def decode_accessor(
-        accessor: Accessor|AccessorSparse,
+        accessor: Accessor | AccessorSparse,
         gltf: GLTF,
         bin_data: bytes
 ) -> np.ndarray:
@@ -1394,7 +1376,7 @@ def extract_mesh_geometries(
                     color_arr = arr_data
                 # Could handle JOINTS_0, WEIGHTS_0, TANGENT, etc. here if needed
 
-            # 2) Create our gltf.geometry.MeshGeometry
+            # 2) Create our pygltf.geometry.MeshGeometry
             mesh_geom = MeshGeometry(
                 vertices=pos_arr if pos_arr is not None else np.array([], dtype=np.float32),
                 colors=color_arr,
@@ -1408,13 +1390,12 @@ def extract_mesh_geometries(
     return output_meshes
 
 
-
-def load_glb_to_mesh_geometries(glb_data:bytes) -> list[MeshGeometry]:
+def load_glb_to_mesh_geometries(glb_data: bytes) -> list[MeshGeometry]:
     """
     Reads a .glb file, extracts the JSON chunk into GLTF classes,
     and returns a list of MeshGeometry objects from the BIN chunk.
     """
-    data=glb_data
+    data = glb_data
 
     chunks = list(unpack_all(data))
 
@@ -1429,7 +1410,7 @@ def load_glb_to_mesh_geometries(glb_data:bytes) -> list[MeshGeometry]:
     # For simplicity, we assume there's only one BIN chunk, typical in glb:
     # If multiple BIN chunks exist, you'd have to handle them more carefully
     # (and match them to the correct 'buffer' in gltf_obj.buffers).
-    if len(bin_chunks)==1:
+    if len(bin_chunks) == 1:
         bin_data = bin_chunks[0].chunkData if bin_chunks else b""
 
         # Now extract the geometry
@@ -1442,11 +1423,8 @@ def load_glb_to_mesh_geometries(glb_data:bytes) -> list[MeshGeometry]:
 
 
 ###############################################################################
-#                      gltf packing (pack_header, pack_json, etc.)            #
+#                      pygltf packing (pack_header, pack_json, etc.)            #
 ###############################################################################
-
-import json
-from typing import Any, Union
 
 JSON_CHUNK_TYPE = 0x4E4F534A  # 'JSON'
 BIN_CHUNK_TYPE = 0x004E4942  # 'BIN'
@@ -1798,11 +1776,12 @@ def append_buffer_view(arr, buffer: bytearray, gltf_type="VEC3", dtype=5126, nam
     buffer.extend(flatview.tobytes())
     return res
 
+
 ###############################################################################
 #                         High-level convenience function                     #
 ###############################################################################
 
-def write_glb(meshes: List[MeshGeometry], output_path: str|Path)->None:
+def write_glb(meshes: List[MeshGeometry], output_path: str | Path) -> None:
     """
     Convert a list of MeshGeometry into a GLTF object and write a .glb file.
     """
@@ -1811,21 +1790,23 @@ def write_glb(meshes: List[MeshGeometry], output_path: str|Path)->None:
     with open(output_path, "wb") as f:
         f.write(glb_bytes)
 
-def read_glb(path:str|Path)->list[MeshGeometry]:
+
+def read_glb(path: str | Path) -> list[MeshGeometry]:
     with open(path, 'rb') as f:
-        result=load(f)
+        result = load(f)
     return result
 
-def loads(glb_data:bytes):
+
+def loads(glb_data: bytes):
     return load_glb_to_mesh_geometries(glb_data)
 
 
-def load(fl:BytesIO|FileIO|BinaryIO):
-    data:bytes = fl.read()
+def load(fl: BytesIO | FileIO | BinaryIO):
+    data: bytes = fl.read()
     return loads(data)
 
 
-def dumps(geometry:list[MeshGeometry])->bytes:
+def dumps(geometry: list[MeshGeometry]) -> bytes:
     """
         Convert a list of MeshGeometry into a GLB bytes.
         """
@@ -1834,7 +1815,7 @@ def dumps(geometry:list[MeshGeometry])->bytes:
     return glb_bytes
 
 
-def dump(geometry: list[MeshGeometry], fl:BytesIO|FileIO|BinaryIO) -> None:
+def dump(geometry: list[MeshGeometry], fl: BytesIO | FileIO | BinaryIO) -> None:
     """
     Convert a list of MeshGeometry into a GLB bytes.
     """
@@ -1843,16 +1824,3 @@ def dump(geometry: list[MeshGeometry], fl:BytesIO|FileIO|BinaryIO) -> None:
     fl.write(glb_bytes)
 
 
-
-#
-# Example usage
-#
-if __name__ == "__main__":
-    # Create a minimal valid GLTF object with the required 'asset.version'
-    example_gltf = GLTF(
-        asset=Asset(version="2.0")
-    )
-
-    # Convert to JSON
-    gltf_json = json.dumps(asdict(example_gltf), indent=2)
-    print(gltf_json)
