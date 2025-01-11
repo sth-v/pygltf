@@ -1,4 +1,8 @@
 # pygltf
+> [!WARNING]
+> The project in not so long ago development and many things are not supported. 
+> Contributions are welcome.
+
 A simple pure Python package to extract and write geometry from pygltf/glb files.
 
 ## Goals
