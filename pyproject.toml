@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "pygltf"
+version = "0.1.0"
+description = "A simple pure python package to extract and write geometry from gltf/glb files."
+authors = ["sth-v <sthv.developer@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "*"
+ujson = "*"
+dataclasses-json="*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
