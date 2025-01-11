@@ -1,6 +1,8 @@
 # pygltf
+
 > [!WARNING]
-> The project in not so long ago development and many things are not supported. 
+> The project has been in development for a while, some things are not supported and some things may change. 
+> Since at the moment all the code fits in one file, you may just want to copy it into your project and tweak it to meet the needs of your application.
 > Contributions are welcome.
 
 A simple pure Python package to extract and write geometry from pygltf/glb files.
